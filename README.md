@@ -1,3 +1,3 @@
 ## Project X
 
-Projeto de conclusão de Curso
+Projeto de Conclusão de Curso
