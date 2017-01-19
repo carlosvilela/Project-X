@@ -1,0 +1,327 @@
+//+------------------------------------------------------------------+
+//|                                               SCALPER-DOLFUT.mq5 |
+//|                                    Copyright 2015, Carlos Vilela |
+//|                                      http://www                  |
+//+------------------------------------------------------------------+
+
+// Nunca execute em conta real, risco de perdas superiores ao valor inicial
+
+#property copyright "Copyright 2015, Carlos Vilela"
+#property link      "http://www.car7os.com/"
+#property version   "1.00"
+//--
+#include <Trade\Trade.mqh> // COMANDO CTRADE PARA CANCELAR AS ORDENS PENDENTES
+//---
+MqlRates    myRates[];
+MqlDateTime myTime;
+MqlBookInfo myBook[];
+//--
+input double Volume                      = 5;
+double StopLoss                        = 0.5;
+double TakeProfit                      = 0.5;
+input double Margem_Alavancagem_DayTrade = 0;
+//---
+
+void CancelarOrdens()
+  {
+  
+//--- variáveis ​​para retornar valores das propriedades de ordem
+   ulong    ticket;
+   double   open_price;
+   double   initial_volume;
+   datetime time_setup;
+   string   symbol;
+   string   type;
+   long     order_magic;
+   long     positionID;
+   datetime HoraAtual=TimeCurrent();
+//--- Numero de ordens atuais pendentes
+   uint     total=OrdersTotal();
+//--- passar por ordens em um loop
+   for(uint i=0;i<total;i++)
+     {
+      //--- voltar ticket ordem por sua posição na lista
+      if((ticket=OrderGetTicket(i))>0)
+        {
+         //--- retorna propriedades de uma Ordem
+         open_price    =OrderGetDouble(ORDER_PRICE_OPEN);
+         time_setup    =(datetime)OrderGetInteger(ORDER_TIME_SETUP);
+         symbol        =OrderGetString(ORDER_SYMBOL);
+         order_magic   =OrderGetInteger(ORDER_MAGIC);
+         positionID    =OrderGetInteger(ORDER_POSITION_ID);
+         initial_volume=OrderGetDouble(ORDER_VOLUME_INITIAL);
+         type          =EnumToString(ENUM_ORDER_TYPE(OrderGetInteger(ORDER_TYPE)));
+         //--- preparar e apresentar informações sobre a ordem
+         MqlDateTime Posicao; TimeToStruct(time_setup,Posicao);
+         MqlDateTime Servidor; TimeToStruct(HoraAtual,Servidor);
+         if((Posicao.hour==Servidor.hour)&&((Posicao.sec)<=(Servidor.sec-10)))
+         {
+         CTrade *trade=new CTrade();
+         trade.OrderDelete(ticket);
+         delete trade;
+         }
+
+         //printf("#ticket %d %s %G %s em %G criado em %s",
+         //       ticket,                 // ticket de ordem
+         //       type,                   // tipo
+         //       initial_volume,         // volume colocado
+         //       symbol,                 // simbolo
+         //       open_price,             // preço de abertura especificada
+         //       TimeToString(time_setup)// tempo de colocar a ordem
+         //       );
+        }
+     }
+  }
+  
+//---
+
+bool ordenspendentes()
+  {
+  
+//--- variáveis ​​para retornar valores das propriedades de ordem
+   ulong    ticket;
+   datetime HoraAtual=TimeCurrent();
+//--- Numero de ordens atuais pendentes
+   uint     total=OrdersTotal();
+//--- passar por ordens em um loop
+   for(uint i=0;i<total;i++)
+     {
+      //--- voltar ticket ordem por sua posição na lista
+      if((ticket=OrderGetTicket(i))>0)
+        {
+         return true;
+
+        }
+     }
+     return false;
+     
+  }
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+
+int OnInit()
+  {
+CancelarOrdens();  
+//---
+   datetime myTimeVar = myTime.day;
+//---
+   bool ok=MarketBookAdd(_Symbol);
+   if(ok){ Print("Sistema Scalper em Dólar Futuro iniciado corretamente.");}
+//---
+   return(INIT_SUCCEEDED);
+   
+  }
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+  {
+//---
+   bool ok=MarketBookRelease(_Symbol);
+   if(ok){ Print("Sistema encerrado.");}
+  }
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+
+void OnBookEvent (const string& symbol)  {
+
+double balance=AccountInfoDouble(ACCOUNT_BALANCE);
+
+if(balance>Margem_Alavancagem_DayTrade){
+  
+
+
+   bool success=MarketBookGet(_Symbol,myBook);
+   
+   if(success) 
+     {
+     
+     int C_anterior, C_Atual, V_anterior, V_Atual;
+     C_anterior=31; C_Atual=30; V_anterior=28; V_Atual=29;
+     
+/*         Print("******* Book de Ofertas *******");
+     
+         Print(IntegerToString(C_anterior),
+               " : Preço = ",DoubleToString(myBook[C_anterior].price,_Digits),
+               " / Volume = ",IntegerToString(myBook[C_anterior].volume),
+               " / Tipo = ",IntegerToString(myBook[C_anterior].type));
+
+         Print(IntegerToString(C_Atual),
+               " : Preço = ",DoubleToString(myBook[C_Atual].price,_Digits),
+               " / Volume = ",IntegerToString(myBook[C_Atual].volume),
+               " / Tipo = ",IntegerToString(myBook[C_Atual].type));
+               
+               Print(IntegerToString(V_Atual),
+               " : Preço = ",DoubleToString(myBook[V_Atual].price,_Digits),
+               " / Volume = ",IntegerToString(myBook[V_Atual].volume),
+               " / Tipo = ",IntegerToString(myBook[V_Atual].type));
+               
+                        Print(IntegerToString(V_anterior),
+               " : Preço = ",DoubleToString(myBook[V_anterior].price,_Digits),
+               " / Volume = ",IntegerToString(myBook[V_anterior].volume),
+               " / Tipo = ",IntegerToString(myBook[V_anterior].type));
+               
+         Print("* developed by Carlos Bezerra Vilela *");
+*/
+//---
+string CA = IntegerToString(myBook[C_Atual].volume);
+double C_At = StringToDouble(CA);
+
+string CAA = DoubleToString(myBook[C_Atual].price,_Digits);
+double C_AAt = StringToDouble(CAA);
+
+string Ca = IntegerToString(myBook[C_anterior].volume);
+double C_ant = StringToDouble(Ca);
+
+string VA = IntegerToString(myBook[V_Atual].volume);
+double V_At = StringToDouble(VA);
+
+string VAA = DoubleToString(myBook[V_Atual].price,_Digits);
+double V_AAt = StringToDouble(VAA);
+
+
+string Va = IntegerToString(myBook[V_anterior].volume);
+double V_ant = StringToDouble(Va);
+//---
+
+datetime inicio = D'9:00:00';
+datetime fim = D'17:00:00';
+datetime HoraServidor=TimeCurrent();
+MqlDateTime Serv;
+TimeToStruct(HoraServidor,Serv);
+MqlDateTime Abertura;
+TimeToStruct(inicio,Abertura); 
+MqlDateTime Fechamento;
+TimeToStruct(fim,Fechamento); 
+
+
+
+if((Abertura.hour<=Serv.hour)&&(Fechamento.hour>Serv.hour)){
+
+
+
+if(ordenspendentes() || PositionSelect(_Symbol))
+{
+//Print("Exists a Position in "+_Symbol);
+}
+else{
+
+
+//--
+      if(((C_At>=100) && (V_At<=25)) || ((C_At>=170) && (V_At<=30)))
+{
+
+//Print("///////OK\\\\\\\\");
+
+
+         double preco = C_AAt;
+         MqlTradeRequest request;
+         MqlTradeResult result;
+         request.symbol = _Symbol;
+         request.action = TRADE_ACTION_PENDING;
+         request.order = 1;
+         request.price = NormalizeDouble(preco,_Digits);
+         request.sl = NormalizeDouble(preco-StopLoss,_Digits);
+         request.tp = NormalizeDouble(preco+TakeProfit,_Digits);
+         request.volume = Volume;
+         request.magic = 1;
+         request.deviation = 0;
+         request.type = ORDER_TYPE_BUY_LIMIT;
+         request.type_filling = ORDER_FILLING_RETURN;
+         request.comment = "Buy_Order";
+         //Print("Symbol = ",_Symbol," Entry = ",request.price, ", TP = ", request.tp, ", SL =",request.sl,", Volume = ",request.volume);
+         if(OrderSend(request, result)){
+         //Print("OrderSent");
+         }
+         if(result.retcode==10009 || result.retcode==10008)
+         {
+               //Print("This is Sell Order: "+_Symbol);
+         }
+                        else
+                                {
+                                        Print("OrderSend failed with error #",GetLastError(), " Retcode = ", result.retcode);
+                        
+                                }
+                                
+                             
+
+      
+      
+    }
+    
+//--
+
+      if(((V_At>=100) && (C_At<=25)) || ((V_At>=170) && (C_At<=30)))
+{
+
+//Print("///////OK\\\\\\\\");
+
+   
+         double preco = V_AAt;
+         MqlTradeRequest request;
+         MqlTradeResult result;
+         request.symbol = _Symbol;
+         request.action = TRADE_ACTION_PENDING;
+         request.order = 1;
+         request.price = NormalizeDouble(preco,_Digits);
+         request.sl = NormalizeDouble(preco+StopLoss,_Digits);
+         request.tp = NormalizeDouble(preco-TakeProfit,_Digits);
+         request.volume = Volume;
+         request.magic = 1;
+         request.deviation = 0;
+         request.type = ORDER_TYPE_SELL_LIMIT;
+         request.type_filling = ORDER_FILLING_RETURN;
+         request.comment = "Sell_Order";
+         //Print("Symbol = ",_Symbol," Entry = ",request.price, ", TP = ", request.tp, ", SL =",request.sl,", Volume = ",request.volume);
+         if(OrderSend(request, result)){
+         // Print("OrderSent");
+         }
+         if(result.retcode==10009 || result.retcode==10008)
+         {
+               //Print("This is Sell Order: "+_Symbol);
+         }
+                        else
+                                {
+                                        Print("OrderSend failed with error #",GetLastError(), " Retcode = ", result.retcode);
+                        
+                                }
+
+
+      
+    }
+//--
+}
+  
+}else{
+Print("Horario de Funcionamento das 9hrs as 17hrs.");
+Print("O Horario de Funcionamento terminou.");
+Print("Favor gere o extrato do dia e verifique o desenpenho.");
+}
+
+
+
+
+
+
+
+  }
+
+  }else{
+  
+Print("Scalper suspenso - O Balanço da conta está no limite da Margem_Alavancagem_DayTrade");
+Alert("Scalper suspenso - O Balanço da conta está no limite da Margem_Alavancagem_DayTrade");  
+  
+  }
+
+// Cancelar Ordem pendente por mais de 10 segundos
+
+//Inserir o Código
+CancelarOrdens();
+//--
+  
+  
+ }
+//+------------------------------------------------------------------+
